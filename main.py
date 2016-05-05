@@ -4,28 +4,9 @@ from plyer import gps
 from kivy.app import App
 from kivy.properties import StringProperty
 from kivy.clock import Clock, mainthread
-
-kv = '''
-BoxLayout:
-    orientation: 'vertical'
-
-    Label:
-        text: app.gps_location
-
-    Label:
-        text: app.gps_status
-
-    BoxLayout:
-        size_hint_y: None
-        height: '48dp'
-        padding: '4dp'
-
-        ToggleButton:
-            text: 'Start' if self.state == 'normal' else 'Stop'
-            on_state:
-                app.gps.start() if self.state == 'down' else app.gps.stop()
-'''
-
+from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.label import Label
+import requests
 
 class GpsTest(App):
 
@@ -34,6 +15,7 @@ class GpsTest(App):
 
     def build(self):
         self.gps = gps
+        self.markers = []
         try:
             self.gps.configure(on_location=self.on_location, on_status=self.on_status)
         except NotImplementedError:
@@ -41,30 +23,46 @@ class GpsTest(App):
             traceback.print_exc()
             self.gps_status = 'GPS is not implemented for your platform'
 
-        #self.gps.start()
-        #self.mapview = MapView(zoom=11, lon=2.000, lat=2.000)
-        #self.mapview = MapView(zoom=11, lon=46.2342, lat=-96.2342)
-        self.mapview = MapView(zoom=20, lat=50.6394, lon=3.057)
-        self.mapview.map_source = "mapquest-osm"
-        #m1 = MapMarker(lat=50.6394, lon=3.057)
-        #mapview.add_marker(m1)
-        #Builder.load_string(kv)
-        return self.mapview
+        self.gps.start()
+        self.mapview = MapView(zoom=20)
+        layout = FloatLayout(oritentation='vertical')
+
+        layout.add_widget(self.mapview)
+        self.lat = Label(text="lat", font_size='50sp', pos=(0,0))
+        self.lon = Label(text="lon", font_size='50sp', pos=(0,200))
+        layout.add_widget(self.lat)
+        layout.add_widget(self.lon)
+
+        return layout
+        #return self.mapview
         #return Builder.load_string(kv)
 
     @mainthread
     def on_location(self, **kwargs):
-        #self.gps_location = '\n'.join(['{}={}'.format(k, v) for k, v in kwargs.items()])
         items = []
         for k, v in kwargs.items():
             items.append(k)
             items.append(v)
 
-        self.mapview.center_on(items[5], items[7])
+        for x in self.markers:
+            self.mapview.remove_marker(x)
 
-        #self.gps_location = str(items[4]) + "=" + str(items[5]) + "\n" + str(items[6]) + "=" + str(items[7])
+        location = str(items[7]) + "_" + str(items[5])
+        name = "josh"
+        r = requests.get("http://students.cs.ndsu.nodak.edu/~philippy/response/a.php?info=" + name + "," + location)
 
-        #self.map.center_on()
+        clients = r.text.split(";")
+
+        for x in clients[:-1]:
+            c = x.split(",")
+            cord = c[1].split("_")
+            m1 = MapMarker(lat=float(cord[0]), lon=float(cord[1]))
+            self.mapview.add_marker(m1)
+            self.markers.append(m1)
+
+        self.mapview.center_on(items[7], items[5])
+        self.lat.text = str(items[7])
+        self.lon.text = str(items[5])
 
     @mainthread
     def on_status(self, stype, status):
