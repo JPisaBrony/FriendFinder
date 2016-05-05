@@ -4,9 +4,13 @@ from plyer import gps
 from kivy.app import App
 from kivy.properties import StringProperty
 from kivy.clock import Clock, mainthread
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.label import Label
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.textinput import TextInput
+from kivy.uix.button import Button
 import requests
+import PIL
+import PIL.Image
+import PIL.ImageDraw
 
 class GpsTest(App):
 
@@ -16,26 +20,23 @@ class GpsTest(App):
     def build(self):
         self.gps = gps
         self.markers = []
+        self.nametext = ""
         try:
-            self.gps.configure(on_location=self.on_location, on_status=self.on_status)
+            self.gps.configure(on_location=self.on_location)
         except NotImplementedError:
             import traceback
             traceback.print_exc()
             self.gps_status = 'GPS is not implemented for your platform'
 
-        self.gps.start()
+        layout = BoxLayout(orientation='vertical')
         self.mapview = MapView(zoom=20)
-        layout = FloatLayout(oritentation='vertical')
-
+        self.text = TextInput(text="Enter Name", size_hint=(1,0.05))
+        self.but = Button(text="Submit", size_hint=(1,0.05))
+        self.but.bind(on_press=self.start)
+        layout.add_widget(self.text)
+        layout.add_widget(self.but)
         layout.add_widget(self.mapview)
-        self.lat = Label(text="lat", font_size='50sp', pos=(0,0))
-        self.lon = Label(text="lon", font_size='50sp', pos=(0,200))
-        layout.add_widget(self.lat)
-        layout.add_widget(self.lon)
-
         return layout
-        #return self.mapview
-        #return Builder.load_string(kv)
 
     @mainthread
     def on_location(self, **kwargs):
@@ -48,8 +49,7 @@ class GpsTest(App):
             self.mapview.remove_marker(x)
 
         location = str(items[7]) + "_" + str(items[5])
-        name = "josh"
-        r = requests.get("http://students.cs.ndsu.nodak.edu/~philippy/response/a.php?info=" + name + "," + location)
+        r = requests.get("http://students.cs.ndsu.nodak.edu/~philippy/response/a.php?info=" + self.nametext + "," + location)
 
         clients = r.text.split(";")
 
@@ -57,16 +57,20 @@ class GpsTest(App):
             c = x.split(",")
             cord = c[1].split("_")
             m1 = MapMarker(lat=float(cord[0]), lon=float(cord[1]))
+            image = PIL.Image.new("RGBA", (80,50))
+            draw = PIL.ImageDraw.Draw(image)
+            draw.text((10,10), c[0], fill=(0,0,0))
+            imger = c[0] + ".png"
+            image.save(imger)
+            m1.source = imger
             self.mapview.add_marker(m1)
             self.markers.append(m1)
 
         self.mapview.center_on(items[7], items[5])
-        self.lat.text = str(items[7])
-        self.lon.text = str(items[5])
 
-    @mainthread
-    def on_status(self, stype, status):
-        self.gps_status = 'type={}\n{}'.format(stype, status)
+    def start(self, value):
+        self.nametext = self.text.text
+        self.gps.start()
 
 if __name__ == '__main__':
     GpsTest().run()

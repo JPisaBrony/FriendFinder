@@ -32,7 +32,7 @@ source.include_exts = py,png,jpg,kv,atlas
 version = 1.0
 
 # (list) Application requirements
-requirements = futures,requests,openssl,plyer,kivy
+requirements = futures,requests,openssl,plyer,kivy,pil
 
 # kivy garden
 garden_requirements = mapview
